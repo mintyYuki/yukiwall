@@ -24,9 +24,14 @@ def ssh_check(ports) -> None:
 def configure() -> None:
     print("💫 yukiwall - simple wrapper for nftables")
     while True:
-        raw: str = input("Ports to allow (e.g., tcp/22, 80/tcp): ").strip()
-        ports: list[str | None] = [normalize_port(port_str=p.strip()) for p in raw.split(",") if normalize_port(port_str=p.strip())]
-        print(f"Current selection: {', '.join(str(object=p) for p in ports if p is not None)}")
+        raw = input("Ports to allow (e.g., tcp/22, 80/tcp): ").strip()
+        ports = []
+        for p in raw.replace(",", " ").split():
+            norm = normalize_port(p.strip())
+            if norm:
+                ports.append(norm)  
+
+        print(f"Current selection: {', '.join(ports)}")
         ssh_check(ports=ports)
         if ask_yn(prompt="Is this correct?"):
             break
@@ -71,6 +76,12 @@ def list_ports() -> None:
     else:
         print("🔒 All incoming traffic blocked.")
 
+def flush_ports() -> None:
+    """Remove all allowed ports and disable firewall rules (sets policy to drop)."""
+    save_config(ports=[])
+    apply_nft_config(ports=[], policy="drop")
+    print("🧹 All allowed ports flushed! Firewall is now blocking everything.")
+
 def main() -> None:
     ensure_root()
 
@@ -81,7 +92,8 @@ def main() -> None:
         "  yukiwall remove <ports>     # Remove ports, same format\n"
         "  yukiwall list               # List allowed ports\n"
         "  yukiwall enable             # Enable firewall\n"
-        "  yukiwall disable            # Disable firewall"
+        "  yukiwall disable            # Disable firewall\n"
+        "  yukiwall flush              # Flush allowed ports"
     )
 
     if len(sys.argv) < 2:
@@ -113,6 +125,9 @@ def main() -> None:
         if ask_yn(prompt="Disable firewall (Allow ALL)?"):
             apply_nft_config(ports=[], policy="accept")
             print("🛑 Firewall DISABLED")
+    elif cmd == "flush":
+        if ask_yn(prompt="Are you sure you want to flush all allowed ports?"):
+            flush_ports()
     else:
         print(usage_msg)
         sys.exit(1)
