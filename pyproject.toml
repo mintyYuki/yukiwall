@@ -1,0 +1,9 @@
+[project]
+name = "yukiwall"
+version = "0.1.0"
+description = "Simple nftables wrapper"
+authors = [{name="mintyYuki"}]
+dependencies = []
+
+[project.scripts]
+yukiwall = "yukiwall.cli:main"
