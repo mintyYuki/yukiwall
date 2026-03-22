@@ -1,30 +1,33 @@
 # 🌸 yukiwall
 
-**yukiwall** is a super tiny, ultra-cute firewall frontend for **nftables**, the modern and recommended Linux firewall backend.
+**yukiwall** is a tiny, ultra-cute firewall frontend for **nftables**, giving you simple control over Linux firewall rules without headaches.
 
 ---
 
 ## ✨ Features
 
-* Interactive port setup: `configure`
-* Add or remove allowed ports on the fly: `add` / `remove`
-* Peek at your current ports: `list`
-* Turn firewall on or off: `enable` / `disable`
-* Powered by **nftables** - modern, clean, and efficient
+* Add or remove rules with precision: `allow` / `block` / `remove`
+* Filter by source IP or subnet: `from <ip/subnet>`
+* Filter specific ports or protocols: `to <ports>` (tcp/udp/both)
+* List all rules with IDs: `list`
+* Reload rules instantly: `reload`
+* Flush all rules: `flush`
+* Optional logging for dropped packets: `logging on|off`
+* Powered by **nftables** – modern, fast, clean
 
 ---
 
 ## 💻 Requirements
 
 * Python 3.xx
-* Dependencies (handled automatically by `install.sh`)
 * Root privileges for firewall changes
+* Dependencies installed via `install.sh` script
 
 ---
 
 ## 🚀 Installation
 
-Clone and install in one line:
+Clone and install in one command:
 
 ```bash
 cd $HOME && git clone https://github.com/mintyYuki/yukiwall.git && cd yukiwall && sudo bash install.sh
@@ -47,69 +50,85 @@ cd $HOME/yukiwall && sudo bash uninstall.sh
 ## 🛠 Usage
 
 ```bash
-sudo yukiwall <configure|add|remove|list|enable|disable>
+sudo yukiwall <command> [args...]
 ```
+
+### Commands
+
+| Command                               | Description                                                          |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `allow from <ip/subnet> [to <ports>]` | Allow traffic from a specific IP/subnet, optionally to certain ports |
+| `allow to <ports>`                    | Allow ports globally                                                 |
+| `block from <ip/subnet>`              | Block traffic from a specific source                                 |
+| `remove <id>`                         | Remove a rule by its ID                                              |
+| `list`                                | List all current rules with IDs                                      |
+| `reload`                              | Apply current rules immediately                                      |
+| `flush`                               | Remove all rules (resets to default drop)                            |
+| `logging on/off`                      | Enable or disable logging of dropped packets                         |
 
 ### Examples
 
-* Configure interactively:
+* Allow SSH from local network:
 
 ```bash
-sudo yukiwall configure
+sudo yukiwall allow from 192.168.0.0/16 to tcp/22
 ```
 
-* Add ports:
+* Allow web ports globally:
 
 ```bash
-sudo yukiwall add tcp/80 udp/53 both/443
+sudo yukiwall allow to tcp/80,443
 ```
 
-* Remove ports:
+* Block a malicious subnet:
 
 ```bash
-sudo yukiwall remove tcp/22
+sudo yukiwall block from 10.0.0.0/24
 ```
 
-* List allowed ports:
+* Remove a rule by ID:
+
+```bash
+sudo yukiwall remove 3
+```
+
+* List rules:
 
 ```bash
 sudo yukiwall list
 ```
 
-* Enable firewall:
+* Enable logging:
 
 ```bash
-sudo yukiwall enable
+sudo yukiwall logging on
 ```
 
-* Disable firewall:
+* Flush all rules:
 
 ```bash
-sudo yukiwall disable
+sudo yukiwall flush
 ```
-
-> ⚠️ **SSH Warning:** yukiwall will warn you if port 22 isn't allowed, so you don't get locked out <3
 
 ---
 
 ## 🧩 How it works
 
-yukiwall keeps it simple:
+1. Stores rules in `/etc/yukiwall.json`.
+2. Generates a clean **nftables** config from the rules.
+3. Applies rules via `nft` and ensures `nftables` service is running.
+4. Optional logging for dropped packets if enabled.
 
-1. Saves allowed ports to `/etc/yukiwall.json`
-2. Generates a clean **nftables** config
-3. Applies it via `nft` and keeps the service running
-
-All the heavy lifting is handled by the backend — you just choose which ports are allowed ✨
+> ⚠️ **SSH Warning:** Always make sure port 22 is allowed if you connect remotely — yukiwall will not block your access automatically.
 
 ---
 
 ## 🐛 Caveats
 
-* **Fresh project:** there might be some bugs;
-* Please open an issue on GitHub if you run into trouble;
-* Over time, it’ll get even better.
+* **Fresh project:** some bugs might exist.
+* Report issues on GitHub to help improve it.
+* Future updates will expand features and stability.
 
 ---
 
-Made with love by **yuki**, for those who are tired of bugs and complexity.
+Made with 💖 by **yuki**, for those who want a firewall that just works without drama.
