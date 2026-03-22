@@ -22,25 +22,37 @@ def load_config():
 
     return cfg
 
-def normalize_port(port_str):
-    if "/" not in port_str:
+def normalize_port(token):
+    token = token.lower().strip()
+
+    valid_protos = {"tcp", "udp", "both"}
+
+    if "/" not in token:
+        if token.isdigit():
+            return f"tcp/{token}"
         return None
-    a, b = port_str.split("/")
-    if a.isdigit():
+
+    a, b = token.split("/", 1)
+
+    if a.isdigit() and b in valid_protos:
         return f"{b}/{a}"
-    elif b.isdigit():
+
+    if b.isdigit() and a in valid_protos:
         return f"{a}/{b}"
+
     return None
 
 def expand_ports(ports):
     result = []
     for p in ports:
         proto, port = p.split("/")
+
         if proto == "both":
             result.append(f"tcp/{port}")
             result.append(f"udp/{port}")
-        else:
+        elif proto in ("tcp", "udp"):
             result.append(p)
+
     return result
 
 def generate_nft_config(config):

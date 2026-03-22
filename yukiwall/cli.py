@@ -15,31 +15,58 @@ def ensure_root():
 def parse_rule(args):
     action = args[0]
     source = None
-    ports = None
+    ports = []
+    invalid = []
 
     i = 1
     while i < len(args):
-        if args[i] == "from":
+        token = args[i]
+
+        if token == "from":
             i += 1
-            source = args[i]
-        elif args[i] == "to":
+            if i < len(args):
+                source = args[i]
+            else:
+                raise ValueError("Missing value after 'from'")
+
+        elif token == "to":
             i += 1
+            if i >= len(args):
+                raise ValueError("Missing ports after 'to'")
+
             raw_ports = args[i].replace(",", " ").split()
-            ports = []
             for p in raw_ports:
                 norm = normalize_port(p)
                 if norm:
                     ports.append(norm)
+                else:
+                    invalid.append(p)
+
+        else:
+            norm = normalize_port(token)
+            if norm:
+                ports.append(norm)
+            else:
+                invalid.append(token)
+
         i += 1
+
+    if invalid:
+        raise ValueError(f"Invalid port/protocol: {', '.join(invalid)}")
 
     return {
         "action": action,
         "source": source,
-        "ports": ports
+        "ports": ports if ports else None
     }
 
 def add_rule(args):
-    rule = parse_rule(args)
+    try:
+        rule = parse_rule(args)
+    except ValueError as e:
+        print(f"❌ {e}")
+        return
+
     cfg = load_config()
 
     rules = cfg.get("rules", [])
@@ -58,9 +85,14 @@ def remove_rule(rule_id):
     cfg = load_config()
     rules = cfg.get("rules", [])
 
-    rules = [r for r in rules if r["id"] != rule_id]
+    original_len = len(rules)
+    new_rules = [r for r in rules if r["id"] != rule_id]
 
-    cfg["rules"] = rules
+    if len(new_rules) == original_len:
+        print(f"⚠️ No rule with ID {rule_id}.")
+        return
+
+    cfg["rules"] = new_rules
     save_config(cfg)
     apply_nft_config(cfg)
 
@@ -129,7 +161,7 @@ def main():
 
     if cmd in ("allow", "block"):
         add_rule(sys.argv[1:])
-    elif cmd == "remove":
+    elif cmd == "remove" or cmd == "delete":
         remove_rule(int(sys.argv[2]))
     elif cmd == "list":
         list_rules()
