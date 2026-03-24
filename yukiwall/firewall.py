@@ -62,10 +62,10 @@ def generate_nft_config(config):
     nft = [
         "#!/usr/sbin/nft -o -f",
         "",
-        "flush ruleset",
-        "table inet filter {",
+        "flush table inet yukiwall",
+        "table inet yukiwall {",
         "    chain input {",
-        "        type filter hook input priority 0;",
+        "        type filter hook input priority 50;",
         f"        policy {policy};",
         "        ct state established,related accept;",
         "        iif \"lo\" accept;"
