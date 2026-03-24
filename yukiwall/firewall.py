@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import tempfile
 
 CONFIG_PATH = "/etc/yukiwall.json"
 NFT_PATH = "/etc/nftables.conf"
@@ -71,10 +72,10 @@ def generate_nft_config(config):
 
     nft = [
         "#!/usr/sbin/nft -o -f",
-        "",
+        ""
         "table inet yukiwall {",
         "    chain input {",
-        "        type filter hook input priority 50;",
+        "        type filter hook input priority 0;",
         f"        policy {policy};",
         "        ct state established,related accept;",
         "        iif \"lo\" accept;"
@@ -121,16 +122,42 @@ def generate_nft_config(config):
 
     return "\n".join(nft)
 
+def get_systemctl_state(service):
+    out = subprocess.run(
+        ["systemctl", "show", service, "--property=UnitFileState,ActiveState"],
+        capture_output=True,
+        text=True,
+        check=True
+    ).stdout
+
+    state = dict(line.split("=", 1) for line in out.strip().split("\n"))
+    return state["UnitFileState"], state["ActiveState"]
+
+
+def ensure_nftables():
+    enabled, active = get_systemctl_state("nftables")
+
+    if enabled != "enabled":
+        if active == "active":
+            subprocess.run(["systemctl", "enable", "nftables"], check=True)
+        else:
+            subprocess.run(["systemctl", "enable", "--now", "nftables"], check=True)
+    elif active != "active":
+        subprocess.run(["systemctl", "start", "nftables"], check=True)
+
+
 def apply_nft_config(config):
     nft_conf = generate_nft_config(config)
 
-    tmp = "/tmp/yukiwall.nft"
-    with open(tmp, "w") as f:
+    with tempfile.NamedTemporaryFile("w", dir=os.path.dirname(NFT_PATH), delete=False) as f:
         f.write(nft_conf)
+        tmp = f.name
 
     if os.path.exists(NFT_PATH):
-        os.rename(NFT_PATH, NFT_PATH + ".bak")
+        os.replace(NFT_PATH, NFT_PATH + ".bak")
 
-    subprocess.run(["mv", tmp, NFT_PATH], check=True)
-    subprocess.run(["systemctl", "enable", "--now", "nftables"], check=True)
+    os.replace(tmp, NFT_PATH)
+
+    ensure_nftables()
+
     subprocess.run(["nft", "-f", NFT_PATH], check=True)
